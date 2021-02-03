@@ -7,7 +7,7 @@ import { DefaultButton, DetailsList, Fabric, IColumn, TextField } from "@fluentu
 
 interface IAppState {
   powerAppsConnection: PowerAppsConnection,
-  listCollection: any[],
+  listItems: any[],
   listColumns: IColumn[],
   query: string
 }
@@ -18,14 +18,13 @@ export default class App extends React.Component<{}, IAppState> {
     this.authenticate();
     this.state = {
       ...this.state,
-      listCollection: [],
+      listItems: [],
       listColumns: [],
       query: "accounts"
     }
   }
 
   async authenticate(): Promise<void> {
-    debugger;
     let response: PowerAppsConnection = await Authentication.authenticate(AuthParams);
     this.setState({ ...this.state, powerAppsConnection: response })
   }
@@ -67,13 +66,8 @@ export default class App extends React.Component<{}, IAppState> {
         maxWidth: 200,
         isCollapsible: true,
         isCollapsable: true,
-        isGrouped: false,
-        isMultiline: false,
-        isResizable: true,
-        isRowHeader: false,
-        isSorted: false,
-        isSortedDescending: false,
-        columnActionsMode: 1
+        columnActionsMode: 1,
+        onColumnClick: this._onColumnClick,
       })
     };
 
@@ -97,7 +91,7 @@ export default class App extends React.Component<{}, IAppState> {
       mappedResponse.push(newElem)
     })
 
-    this.setState({ ...this.state, listCollection: mappedResponse, listColumns: columns })
+    this.setState({ ...this.state, listItems: mappedResponse, listColumns: columns })
 
   }
 
@@ -105,15 +99,42 @@ export default class App extends React.Component<{}, IAppState> {
     this.setState({ ...this.state, query: text as string })
   };
 
-  render() {
-    return (
-      <Fabric>
-        <TextField value={this.state.query} label="Api Query" onChange={this.onChangeText} />
-        <DefaultButton text="Submit Request" onClick={() => this.apiRequest(this.state.query)} allowDisabledFocus />
-        { this.state.listCollection.length > 0 && this.state.listColumns.length > 0 ? <DetailsList columns={this.state.listColumns} items={this.state.listCollection} /> : null}
-      </Fabric>
-    )
+
+  private _onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
+    debugger;
+    const { listColumns, listItems: listCollection } = this.state;
+    const newColumns: IColumn[] = listColumns.slice();
+    const currColumn: IColumn = newColumns.filter(currCol => column.key === currCol.key)[0];
+    newColumns.forEach((newCol: IColumn) => {
+      if (newCol === currColumn) {
+        currColumn.isSortedDescending = !currColumn.isSortedDescending;
+        currColumn.isSorted = true;
+      } else {
+        newCol.isSorted = false;
+        newCol.isSortedDescending = true;
+      }
+    });
+    const newItems = this._copyAndSort(listCollection, currColumn.fieldName!, currColumn.isSortedDescending);
+    this.setState({
+      listColumns: newColumns,
+      listItems: newItems,
+    });
   }
-}
+
+  private _copyAndSort<T>(items: T[], columnKey: string, isSortedDescending?: boolean): T[] {
+    const key = columnKey as keyof T;
+    return items.slice(0).sort((a: T, b: T) => ((isSortedDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1));
+  }
+
+    render() {
+      return (
+        <Fabric>
+          <TextField value={this.state.query} label="Api Query" onChange={this.onChangeText} />
+          <DefaultButton text="Submit Request" onClick={() => this.apiRequest(this.state.query)} allowDisabledFocus />
+          { this.state.listItems.length > 0 && this.state.listColumns.length > 0 ? <DetailsList columns={this.state.listColumns} items={this.state.listItems} /> : null}
+        </Fabric>
+      )
+    }
+  }
 
 
