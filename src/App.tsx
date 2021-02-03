@@ -3,12 +3,13 @@ import logo from './logo.svg';
 import './App.css';
 import { Authentication, PowerAppsConnection } from './Authentication/Authentication';
 import { AuthParams, EnvironmentDetails } from './RunSettings.development';
-import { DefaultButton, DetailsList, Fabric, IColumn } from "@fluentui/react";
+import { DefaultButton, DetailsList, Fabric, IColumn, TextField } from "@fluentui/react";
 
 interface IAppState {
   powerAppsConnection: PowerAppsConnection,
   listCollection: any[],
-  listColumns: IColumn[]
+  listColumns: IColumn[],
+  query: string
 }
 
 export default class App extends React.Component<{}, IAppState> {
@@ -17,8 +18,9 @@ export default class App extends React.Component<{}, IAppState> {
     this.authenticate();
     this.state = {
       ...this.state,
-      listCollection:[],
+      listCollection: [],
       listColumns: [],
+      query: "accounts"
     }
   }
 
@@ -45,9 +47,10 @@ export default class App extends React.Component<{}, IAppState> {
     }
 
     let responseJson = await response.json();
-    
+
     // To be more generic you would need to be able to accept interfaces that can then be deconstructed
-    var mappedResponse = responseJson.value.map((item: any) => { const container = { "accountId": item.accountid, "name": item.name }; return container; })
+    let idKey = `${this.state.query.substring(0, this.state.query.length - 1)}id`
+    var mappedResponse = responseJson.value.map((item: any) => { const container = { [idKey]: item.accountid, "name": item.name }; return container; })
 
     let columns: any = [];
     Object.keys(mappedResponse[0]).forEach((column: any) => {
@@ -74,10 +77,15 @@ export default class App extends React.Component<{}, IAppState> {
 
   }
 
+  private onChangeText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, text: string | undefined): void => {
+    this.setState({ ...this.state, query: text as string })
+  };
+
   render() {
     return (
       <Fabric>
-        <DefaultButton text="Standard" onClick={() => this.apiRequest("accounts")} allowDisabledFocus />
+        <TextField value={this.state.query} label="Api Query" onChange={this.onChangeText} />
+        <DefaultButton text="Submit Request" onClick={() => this.apiRequest("accounts")} allowDisabledFocus />
         { this.state.listCollection.length > 0 && this.state.listColumns.length > 0 ? <DetailsList columns={this.state.listColumns} items={this.state.listCollection} /> : null}
       </Fabric>
     )
