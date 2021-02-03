@@ -24,13 +24,13 @@ export default class App extends React.Component<{}, IAppState> {
     }
   }
 
-  async authenticate() {
+  async authenticate(): Promise<void> {
     debugger;
     let response: PowerAppsConnection = await Authentication.authenticate(AuthParams);
     this.setState({ ...this.state, powerAppsConnection: response })
   }
 
-  async apiRequest(query: string) {
+  async apiRequest(query: string): Promise<void> {
     let response = await fetch(`${EnvironmentDetails.org_url}/${query}`,
       {
         method: "GET", headers: {
@@ -50,21 +50,20 @@ export default class App extends React.Component<{}, IAppState> {
 
     // To be more generic you would need to be able to accept interfaces that can then be deconstructed
     let idKey = "";
-    if(this.state.query.endsWith("ies")){
+    if (this.state.query.endsWith("ies")) {
       idKey = `${this.state.query.substring(0, this.state.query.length - 3)}yid`
-    } else{
+    } else {
       idKey = `${this.state.query.substring(0, this.state.query.length - 1)}id`
     }
-    var mappedResponse = responseJson.value.map((item: any) => { const container = { [idKey]: item[idKey], "name": item.name }; return container; })
-    
+
     let columns: any = [];
-    Object.keys(mappedResponse[0]).forEach((column: any) => {
-      debugger;
+
+    const addColumn = (col: any) => {
       columns.push({
-        key: column,
-        name: column,
-        fieldName: column,
-        minWidth: 100,
+        key: col,
+        name: col,
+        fieldName: col,
+        minWidth: 35,
         maxWidth: 200,
         isCollapsible: true,
         isCollapsable: true,
@@ -76,7 +75,27 @@ export default class App extends React.Component<{}, IAppState> {
         isSortedDescending: false,
         columnActionsMode: 1
       })
+    };
+
+    addColumn(idKey);
+
+    // Get only keys with name to filter columns on view and allow dynamic object types.
+    Object.keys(responseJson.value[0]).filter(item => { return item.includes('name') && !item.includes('yomi') && !item.includes('address') }).forEach((column: any) => {
+      debugger;
+      addColumn(column);
     });
+
+    let mappedResponse: {}[] = [];
+
+    // Map elements into a simplified array for use in DetailsList. 
+    responseJson.value.forEach((elem: any) => {
+      let newElem: any = {};
+      newElem[idKey] = elem.opportunityid;
+      columns.forEach((col: any) => {
+        newElem[col.fieldName] = elem[col.fieldName]
+      })
+      mappedResponse.push(newElem)
+    })
 
     this.setState({ ...this.state, listCollection: mappedResponse, listColumns: columns })
 
