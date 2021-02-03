@@ -1,18 +1,22 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.css';
 import { Authentication, PowerAppsConnection } from './Authentication/Authentication';
 import { AuthParams, EnvironmentDetails } from './RunSettings.development';
 import { DefaultButton, DetailsList, DetailsListLayoutMode, Fabric, IColumn, TextField } from "@fluentui/react";
+import { Pagination } from "@uifabric/experiments";
 
 interface IAppState {
   powerAppsConnection: PowerAppsConnection,
   listItems: any[],
   listColumns: IColumn[],
-  query: string
+  query: string,
+  itemsPerPage: number,
+  selectedPageIndex: number;
 }
 
 export default class App extends React.Component<{}, IAppState> {
+  private _allItems: any[] = [];
+
   constructor(props: any) {
     super(props);
     this.authenticate();
@@ -58,7 +62,12 @@ export default class App extends React.Component<{}, IAppState> {
     let columns = this.loadColumns(idKey, responseJson);
     let mappedResponse = this.loadItems(idKey, columns, responseJson);
 
-    this.setState({ ...this.state, listItems: mappedResponse, listColumns: columns })
+    this._allItems = mappedResponse;
+    let itemsPerPage = 2;
+    let selectedPageIndex = 0;
+    debugger;
+    let slice = this.paginate(itemsPerPage, selectedPageIndex);
+    this.setState({ ...this.state, listColumns: columns, listItems: slice, selectedPageIndex: selectedPageIndex, itemsPerPage: itemsPerPage })
 
   }
 
@@ -81,7 +90,6 @@ export default class App extends React.Component<{}, IAppState> {
 
     // Get only keys with name to filter columns on view and allow dynamic object types.
     Object.keys(responseJson.value[0]).filter(item => { return item.includes('name') && !item.includes('yomi') && !item.includes('address') }).forEach((column: any) => {
-      debugger;
       addColumn(column);
     });
 
@@ -106,6 +114,12 @@ export default class App extends React.Component<{}, IAppState> {
     this.setState({ ...this.state, query: text as string })
   };
 
+  private onChangeTextFilter = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, text: string | undefined): void => {
+    let filteredSet = this._allItems.filter(i => JSON.stringify(i).toLowerCase().indexOf((text as string).toLowerCase()) > -1)
+    this.setState({
+      listItems: text ? filteredSet : this._allItems,
+    });
+  };
 
   private onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
     debugger;
@@ -137,19 +151,49 @@ export default class App extends React.Component<{}, IAppState> {
     return item.key;
   }
 
+  private paginate(page_size: number, page_number: number) {
+    debugger;
+    let slice = this._allItems.slice((page_number) * page_size, (page_number + 1) * page_size);
+    return slice;
+  }
+
+  private onPageChange(ev: any) {
+    debugger;
+    let slice = this.paginate(this.state.itemsPerPage, ev);
+    this.setState({ ...this.state, listItems: slice, selectedPageIndex: ev });
+  }
+
   render() {
+    const { query, listItems, listColumns, selectedPageIndex, itemsPerPage } = this.state;
     return (
       <Fabric>
-        <TextField value={this.state.query} label="Api Query" onChange={this.onChangeText} />
-        <DefaultButton text="Submit Request" onClick={() => this.apiRequest(this.state.query)} allowDisabledFocus />
-        { this.state.listItems.length > 0 && this.state.listColumns.length > 0 ?
-          <DetailsList
-            columns={this.state.listColumns}
-            items={this.state.listItems}
-            getKey={this.getKey}
-            setKey="multiple"
-            layoutMode={DetailsListLayoutMode.justified}
-            isHeaderVisible={true} />
+        <TextField value={query} label="Api Query" onChange={this.onChangeText} />
+        <DefaultButton text="Submit Request" onClick={() => this.apiRequest(query)} allowDisabledFocus />
+        <TextField label="Filter by any:" onChange={this.onChangeTextFilter} />
+        { listItems.length > 0 && listColumns.length > 0 ?
+          <Fabric>
+            <DetailsList
+              items={listItems}
+              columns={listColumns}
+              getKey={this.getKey}
+              setKey="multiple"
+              layoutMode={DetailsListLayoutMode.justified}
+            />
+            <Pagination
+              pageCount={this._allItems.length / (itemsPerPage as number)}
+              itemsPerPage={(itemsPerPage as number)}
+              totalItemCount={this._allItems.length}
+              onPageChange={this.onPageChange.bind(this)}
+              selectedPageIndex= {selectedPageIndex}
+              format={'buttons'}
+              previousPageAriaLabel={'previous page'}
+              nextPageAriaLabel={'next page'}
+              firstPageAriaLabel={'first page'}
+              lastPageAriaLabel={'last page'}
+              pageAriaLabel={'page'}
+              selectedAriaLabel={'selected'}
+            />,
+      </Fabric>
           : null}
       </Fabric>
     )
