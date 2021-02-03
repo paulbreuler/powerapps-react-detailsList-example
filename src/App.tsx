@@ -2,8 +2,9 @@ import React from 'react';
 import './App.css';
 import { Authentication, PowerAppsConnection } from './Authentication/Authentication';
 import { AuthParams, EnvironmentDetails } from './RunSettings.development';
-import { DefaultButton, DetailsList, DetailsListLayoutMode, Fabric, IColumn, TextField } from "@fluentui/react";
+import { DefaultButton, DetailsList, DetailsListLayoutMode, Fabric, getId, IColumn, Stack, TextField } from "@fluentui/react";
 import { Pagination } from "@uifabric/experiments";
+import { buttonStyles, sectionStackTokens } from './AppStyles';
 
 interface IAppState {
   powerAppsConnection: PowerAppsConnection,
@@ -52,23 +53,28 @@ export default class App extends React.Component<{}, IAppState> {
     let responseJson = await response.json();
 
     // To be more generic you would need to be able to accept interfaces that can then be deconstructed
+    let idKey = this.getIdKey();
+
+    let columns = this.loadColumns(idKey, responseJson);
+    let mappedResponse = this.loadItems(idKey, columns, responseJson);
+    this._allItems = mappedResponse;
+
+    let itemsPerPage = 2;
+    let selectedPageIndex = 0;
+
+    let slice = this.paginate(itemsPerPage, selectedPageIndex);
+    this.setState({ ...this.state, listColumns: columns, listItems: slice, selectedPageIndex: selectedPageIndex, itemsPerPage: itemsPerPage })
+
+  }
+
+  private getIdKey() {
     let idKey = "";
     if (this.state.query.endsWith("ies")) {
       idKey = `${this.state.query.substring(0, this.state.query.length - 3)}yid`
     } else {
       idKey = `${this.state.query.substring(0, this.state.query.length - 1)}id`
     }
-
-    let columns = this.loadColumns(idKey, responseJson);
-    let mappedResponse = this.loadItems(idKey, columns, responseJson);
-
-    this._allItems = mappedResponse;
-    let itemsPerPage = 2;
-    let selectedPageIndex = 0;
-    debugger;
-    let slice = this.paginate(itemsPerPage, selectedPageIndex);
-    this.setState({ ...this.state, listColumns: columns, listItems: slice, selectedPageIndex: selectedPageIndex, itemsPerPage: itemsPerPage })
-
+    return idKey;
   }
 
   private loadColumns(idKey: any, responseJson: any): any[] {
@@ -110,7 +116,7 @@ export default class App extends React.Component<{}, IAppState> {
     return mappedResponse;
   }
 
-  private onChangeText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, text: string | undefined): void => {
+  private onChangeTextQuery = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, text: string | undefined): void => {
     this.setState({ ...this.state, query: text as string })
   };
 
@@ -167,35 +173,45 @@ export default class App extends React.Component<{}, IAppState> {
     const { query, listItems, listColumns, selectedPageIndex, itemsPerPage } = this.state;
     return (
       <Fabric>
-        <TextField value={query} label="Api Query" onChange={this.onChangeText} />
-        <DefaultButton text="Submit Request" onClick={() => this.apiRequest(query)} allowDisabledFocus />
-        <TextField label="Filter by any:" onChange={this.onChangeTextFilter} />
-        { listItems.length > 0 && listColumns.length > 0 ?
-          <Fabric>
-            <DetailsList
-              items={listItems}
-              columns={listColumns}
-              getKey={this.getKey}
-              setKey="multiple"
-              layoutMode={DetailsListLayoutMode.justified}
-            />
-            <Pagination
-              pageCount={this._allItems.length / (itemsPerPage as number)}
-              itemsPerPage={(itemsPerPage as number)}
-              totalItemCount={this._allItems.length}
-              onPageChange={this.onPageChange.bind(this)}
-              selectedPageIndex= {selectedPageIndex}
-              format={'buttons'}
-              previousPageAriaLabel={'previous page'}
-              nextPageAriaLabel={'next page'}
-              firstPageAriaLabel={'first page'}
-              lastPageAriaLabel={'last page'}
-              pageAriaLabel={'page'}
-              selectedAriaLabel={'selected'}
-            />,
-      </Fabric>
-          : null}
-      </Fabric>
+        <Stack horizontal tokens={sectionStackTokens}>
+          <Stack.Item grow>
+            <TextField value={query} label="Api Query" onChange={this.onChangeTextQuery} />
+          </Stack.Item>
+          <Stack.Item shrink>
+            <DefaultButton text="Submit Request" onClick={() => this.apiRequest(query)} allowDisabledFocus styles={buttonStyles} />
+          </Stack.Item>
+          <Stack.Item grow>
+            <TextField label="Filter by any:" onChange={this.onChangeTextFilter} />
+          </Stack.Item>
+        </Stack>
+        {
+          listItems.length > 0 && listColumns.length > 0 ?
+            <Fabric>
+              <DetailsList
+                items={listItems}
+                columns={listColumns}
+                getKey={this.getKey}
+                setKey="multiple"
+                layoutMode={DetailsListLayoutMode.justified}
+              />
+              <Pagination
+                pageCount={this._allItems.length / (itemsPerPage as number)}
+                itemsPerPage={(itemsPerPage as number)}
+                totalItemCount={this._allItems.length}
+                onPageChange={this.onPageChange.bind(this)}
+                selectedPageIndex={selectedPageIndex}
+                format={'buttons'}
+                previousPageAriaLabel={'previous page'}
+                nextPageAriaLabel={'next page'}
+                firstPageAriaLabel={'first page'}
+                lastPageAriaLabel={'last page'}
+                pageAriaLabel={'page'}
+                selectedAriaLabel={'selected'}
+              />
+            </Fabric>
+            : null
+        }
+      </Fabric >
     )
   }
 }
