@@ -3,7 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 import { Authentication, PowerAppsConnection } from './Authentication/Authentication';
 import { AuthParams, EnvironmentDetails } from './RunSettings.development';
-import { DefaultButton, DetailsList, Fabric, IColumn, TextField } from "@fluentui/react";
+import { DefaultButton, DetailsList, DetailsListLayoutMode, Fabric, IColumn, TextField } from "@fluentui/react";
 
 interface IAppState {
   powerAppsConnection: PowerAppsConnection,
@@ -55,8 +55,15 @@ export default class App extends React.Component<{}, IAppState> {
       idKey = `${this.state.query.substring(0, this.state.query.length - 1)}id`
     }
 
-    let columns: any = [];
+    let columns = this.loadColumns(idKey, responseJson);
+    let mappedResponse = this.loadItems(idKey, columns, responseJson);
 
+    this.setState({ ...this.state, listItems: mappedResponse, listColumns: columns })
+
+  }
+
+  private loadColumns(idKey: any, responseJson: any): any[] {
+    let columns: any = [];
     const addColumn = (col: any) => {
       columns.push({
         key: col,
@@ -67,10 +74,9 @@ export default class App extends React.Component<{}, IAppState> {
         isCollapsible: true,
         isCollapsable: true,
         columnActionsMode: 1,
-        onColumnClick: this._onColumnClick,
+        onColumnClick: this.onColumnClick
       })
     };
-
     addColumn(idKey);
 
     // Get only keys with name to filter columns on view and allow dynamic object types.
@@ -79,8 +85,11 @@ export default class App extends React.Component<{}, IAppState> {
       addColumn(column);
     });
 
-    let mappedResponse: {}[] = [];
+    return columns;
+  }
 
+  private loadItems(idKey: any, columns: any[], responseJson: any) {
+    let mappedResponse: {}[] = [];
     // Map elements into a simplified array for use in DetailsList. 
     responseJson.value.forEach((elem: any) => {
       let newElem: any = {};
@@ -90,9 +99,7 @@ export default class App extends React.Component<{}, IAppState> {
       })
       mappedResponse.push(newElem)
     })
-
-    this.setState({ ...this.state, listItems: mappedResponse, listColumns: columns })
-
+    return mappedResponse;
   }
 
   private onChangeText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, text: string | undefined): void => {
@@ -100,7 +107,7 @@ export default class App extends React.Component<{}, IAppState> {
   };
 
 
-  private _onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
+  private onColumnClick = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
     debugger;
     const { listColumns, listItems: listCollection } = this.state;
     const newColumns: IColumn[] = listColumns.slice();
@@ -114,27 +121,39 @@ export default class App extends React.Component<{}, IAppState> {
         newCol.isSortedDescending = true;
       }
     });
-    const newItems = this._copyAndSort(listCollection, currColumn.fieldName!, currColumn.isSortedDescending);
+    const newItems = this.copyAndSort(listCollection, currColumn.fieldName!, currColumn.isSortedDescending);
     this.setState({
       listColumns: newColumns,
       listItems: newItems,
     });
   }
 
-  private _copyAndSort<T>(items: T[], columnKey: string, isSortedDescending?: boolean): T[] {
+  private copyAndSort<T>(items: T[], columnKey: string, isSortedDescending?: boolean): T[] {
     const key = columnKey as keyof T;
     return items.slice(0).sort((a: T, b: T) => ((isSortedDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1));
   }
 
-    render() {
-      return (
-        <Fabric>
-          <TextField value={this.state.query} label="Api Query" onChange={this.onChangeText} />
-          <DefaultButton text="Submit Request" onClick={() => this.apiRequest(this.state.query)} allowDisabledFocus />
-          { this.state.listItems.length > 0 && this.state.listColumns.length > 0 ? <DetailsList columns={this.state.listColumns} items={this.state.listItems} /> : null}
-        </Fabric>
-      )
-    }
+  private getKey(item: any, index?: number): string {
+    return item.key;
   }
+
+  render() {
+    return (
+      <Fabric>
+        <TextField value={this.state.query} label="Api Query" onChange={this.onChangeText} />
+        <DefaultButton text="Submit Request" onClick={() => this.apiRequest(this.state.query)} allowDisabledFocus />
+        { this.state.listItems.length > 0 && this.state.listColumns.length > 0 ?
+          <DetailsList
+            columns={this.state.listColumns}
+            items={this.state.listItems}
+            getKey={this.getKey}
+            setKey="multiple"
+            layoutMode={DetailsListLayoutMode.justified}
+            isHeaderVisible={true} />
+          : null}
+      </Fabric>
+    )
+  }
+}
 
 
