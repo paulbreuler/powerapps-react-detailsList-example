@@ -5,6 +5,9 @@ import { AuthParams, EnvironmentDetails } from './RunSettings.development';
 import { DefaultButton, DetailsList, DetailsListLayoutMode, Fabric, getId, IColumn, Stack, TextField } from "@fluentui/react";
 import { Pagination } from "@uifabric/experiments";
 import { buttonStyles, sectionStackTokens } from './AppStyles';
+import { initializeIcons } from '@fluentui/react';
+initializeIcons();
+
 
 interface IAppState {
   powerAppsConnection: PowerAppsConnection,
@@ -206,7 +209,10 @@ export default class App extends React.Component<{}, IAppState> {
                 firstPageAriaLabel={'first page'}
                 lastPageAriaLabel={'last page'}
                 pageAriaLabel={'page'}
-                selectedAriaLabel={'selected'}
+                nextPageIconProps={{ iconName: "ChevronRight"}}
+                lastPageIconProps={{ iconName: "DoubleChevronRight" }}
+                previousPageIconProps={{ iconName: "ChevronLeft"}}
+                firstPageIconProps={{ iconName: "DoubleChevronLeft" }}
               />
             </Fabric>
             : null
