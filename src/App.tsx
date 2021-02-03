@@ -3,16 +3,23 @@ import logo from './logo.svg';
 import './App.css';
 import { Authentication, PowerAppsConnection } from './Authentication/Authentication';
 import { AuthParams, EnvironmentDetails } from './RunSettings.development';
-import { DefaultButton } from "@fluentui/react";
+import { DefaultButton, DetailsList, Fabric, IColumn } from "@fluentui/react";
 
 interface IAppState {
-  powerAppsConnection: PowerAppsConnection
+  powerAppsConnection: PowerAppsConnection,
+  listCollection: any[],
+  listColumns: IColumn[]
 }
 
 export default class App extends React.Component<{}, IAppState> {
   constructor(props: any) {
     super(props);
     this.authenticate();
+    this.state = {
+      ...this.state,
+      listCollection:[],
+      listColumns: [],
+    }
   }
 
   async authenticate() {
@@ -38,14 +45,41 @@ export default class App extends React.Component<{}, IAppState> {
     }
 
     let responseJson = await response.json();
+    
+    // To be more generic you would need to be able to accept interfaces that can then be deconstructed
+    var mappedResponse = responseJson.value.map((item: any) => { const container = { "accountId": item.accountid, "name": item.name }; return container; })
 
-    console.log(responseJson);
+    let columns: any = [];
+    Object.keys(mappedResponse[0]).forEach((column: any) => {
+      debugger;
+      columns.push({
+        key: column,
+        name: column,
+        fieldName: column,
+        minWidth: 100,
+        maxWidth: 200,
+        isCollapsible: true,
+        isCollapsable: true,
+        isGrouped: false,
+        isMultiline: false,
+        isResizable: true,
+        isRowHeader: false,
+        isSorted: false,
+        isSortedDescending: false,
+        columnActionsMode: 1
+      })
+    });
+
+    this.setState({ ...this.state, listCollection: mappedResponse, listColumns: columns })
 
   }
 
   render() {
     return (
-      <DefaultButton text="Standard" onClick={() => this.apiRequest("accounts")} allowDisabledFocus />
+      <Fabric>
+        <DefaultButton text="Standard" onClick={() => this.apiRequest("accounts")} allowDisabledFocus />
+        { this.state.listCollection.length > 0 && this.state.listColumns.length > 0 ? <DetailsList columns={this.state.listColumns} items={this.state.listCollection} /> : null}
+      </Fabric>
     )
   }
 }
