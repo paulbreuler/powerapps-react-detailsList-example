@@ -1,26 +1,22 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import { Authentication, PowerAppsConnection } from './Authentication/Authentication';
+import { AuthParams } from './RunSettings.development';
+import { DefaultButton } from "@fluentui/react";
+export default class App extends React.Component<{}, {}> {
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  async authenticate() {
+    debugger;
+    let response: PowerAppsConnection = await Authentication.authenticate(AuthParams);
+    console.log(response);
+  }
+
+  render() {
+    return (
+      <DefaultButton text="Standard" onClick={this.authenticate} allowDisabledFocus />
+    )
+  }
 }
 
-export default App;
+
